@@ -1,0 +1,151 @@
+/**
+ * @fileoverview App.jsx — Enrutador principal de la aplicación con guards de autenticación y carga de seed data.
+ */
+
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+
+import LoginPage from './pages/LoginPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import InternosPage from './pages/InternosPage.jsx';
+import CursosPage from './pages/CursosPage.jsx';
+import InscripcionesPage from './pages/InscripcionesPage.jsx';
+import AsistenciaPage from './pages/AsistenciaPage.jsx';
+import ReportesPage from './pages/ReportesPage.jsx';
+import UsuariosPage from './pages/UsuariosPage.jsx';
+
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
+import { cargarSeedData } from './utils/seedData.js';
+import { STORAGE_KEYS } from './services/localStorage/storageUtils.js';
+
+function App() {
+  const [initLoaded, setInitLoaded] = useState(false);
+
+  useEffect(() => {
+    const initApp = async () => {
+      // Verificar si ya cargó seed data o si no hay datos iniciales
+      const seedLoaded = localStorage.getItem(STORAGE_KEYS.SEED_LOADED);
+      if (!seedLoaded) {
+        await cargarSeedData();
+      }
+      setInitLoaded(true);
+    };
+    initApp();
+  }, []);
+
+  if (!initLoaded) {
+    return (
+      <div
+        className="d-flex align-items-center justify-content-center"
+        style={{ minHeight: '100vh', background: '#0d1117', color: '#6366f1' }}
+      >
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Iniciando aplicación...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      {/* Sistema global de notificaciones Toast */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#1a1f36',
+            color: '#f8fafc',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+            fontSize: '0.88rem',
+            borderRadius: '12px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#ffffff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+          },
+        }}
+      />
+
+      <Routes>
+        {/* Ruta pública */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Rutas protegidas (Usuario y Admin) */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/internos"
+          element={
+            <ProtectedRoute>
+              <InternosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cursos"
+          element={
+            <ProtectedRoute>
+              <CursosPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/asistencia"
+          element={
+            <ProtectedRoute>
+              <AsistenciaPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <ProtectedRoute>
+              <ReportesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Rutas exclusivas para ADMIN */}
+        <Route
+          path="/inscripciones"
+          element={
+            <ProtectedRoute requireAdmin>
+              <InscripcionesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <ProtectedRoute requireAdmin>
+              <UsuariosPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Redirección por defecto */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
