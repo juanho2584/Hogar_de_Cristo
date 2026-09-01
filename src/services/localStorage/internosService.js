@@ -1,38 +1,20 @@
 /**
- * @fileoverview Servicio de Internos — Implementación localStorage (Fase 1).
- * Implementa IDataService<Interno>.
+ * @fileoverview Servicio de Internos — Implementación localStorage con auditoría.
  */
 
 import { generateId, getFromStorage, saveToStorage, STORAGE_KEYS } from './storageUtils.js';
+import auditService from './auditService.js';
 
 const KEY = STORAGE_KEYS.INTERNOS;
 
-/**
- * @typedef {Object} Interno
- * @property {string} id
- * @property {string} apellidoPaterno
- * @property {string} apellidoMaterno
- * @property {string} nombreCompleto
- * @property {string} dni
- * @property {string} fichaCriminologica
- * @property {string} pabellon
- * @property {string} celda
- * @property {'activo'|'inactivo'|'suspendido'} status
- * @property {string} fechaIngreso - ISO date string
- * @property {string} [notas]
- */
-
 const internosService = {
-  /** @returns {Promise<Interno[]>} */
   getAll: async () => getFromStorage(KEY),
 
-  /** @returns {Promise<Interno|null>} */
   getById: async (id) => {
     const items = getFromStorage(KEY);
     return items.find((i) => i.id === id) || null;
   },
 
-  /** @returns {Promise<Interno>} */
   create: async (data) => {
     const items = getFromStorage(KEY);
 
@@ -54,36 +36,59 @@ const internosService = {
     };
 
     saveToStorage(KEY, [...items, newItem]);
+
+    await auditService.registrar({
+      accion: 'CREAR',
+      entidad: 'Internos',
+      detalle: `Alta de interno: ${newItem.apellidoPaterno} ${newItem.nombreCompleto} (DNI: ${newItem.dni}, Ficha: ${newItem.fichaCriminologica})`,
+      metadata: { internoId: newItem.id, dni: newItem.dni },
+    });
+
     return newItem;
   },
 
-  /** @returns {Promise<Interno>} */
   update: async (id, data) => {
     const items = getFromStorage(KEY);
     const index = items.findIndex((i) => i.id === id);
     if (index === -1) throw new Error('Interno no encontrado.');
 
-    // Validar DNI único (excluyendo el actual)
     if (data.dni && items.some((i) => i.dni === data.dni && i.id !== id)) {
       throw new Error('Ya existe un interno con ese DNI.');
+    }
+
+    if (data.fichaCriminologica && items.some((i) => i.fichaCriminologica === data.fichaCriminologica && i.id !== id)) {
+      throw new Error('Ya existe un interno con esa Ficha Criminológica.');
     }
 
     const updated = { ...items[index], ...data };
     items[index] = updated;
     saveToStorage(KEY, items);
+
+    await auditService.registrar({
+      accion: 'EDITAR',
+      entidad: 'Internos',
+      detalle: `Actualización de interno: ${updated.apellidoPaterno} ${updated.nombreCompleto} (DNI: ${updated.dni})`,
+      metadata: { internoId: id, campos: Object.keys(data) },
+    });
+
     return updated;
   },
 
-  /** @returns {Promise<void>} */
   delete: async (id) => {
     const items = getFromStorage(KEY);
+    const interno = items.find((i) => i.id === id);
+    if (!interno) return;
+
     saveToStorage(KEY, items.filter((i) => i.id !== id));
+
+    await auditService.registrar({
+      accion: 'ELIMINAR',
+      entidad: 'Internos',
+      detalle: `Baja de interno: ${interno.apellidoPaterno} ${interno.nombreCompleto} (DNI: ${interno.dni})`,
+      metadata: { internoId: id, dni: interno.dni },
+    });
   },
 
-  /** Buscar por DNI o ficha
-   * @param {string} query
-   * @returns {Promise<Interno[]>}
-   */
   search: async (query) => {
     const items = getFromStorage(KEY);
     const q = query.toLowerCase();

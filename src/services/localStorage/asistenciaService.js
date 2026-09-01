@@ -1,21 +1,11 @@
 /**
- * @fileoverview Servicio de Asistencia — Implementación localStorage.
+ * @fileoverview Servicio de Asistencia — Implementación localStorage con auditoría.
  */
 
 import { generateId, getFromStorage, saveToStorage, STORAGE_KEYS } from './storageUtils.js';
+import auditService from './auditService.js';
 
 const KEY = STORAGE_KEYS.ASISTENCIA;
-
-/**
- * @typedef {Object} RegistroAsistencia
- * @property {string} id
- * @property {string} internoId
- * @property {string} cursoId
- * @property {string} fecha - ISO date (YYYY-MM-DD)
- * @property {'presente'|'ausente'|'tarde'|'justificado'} estado
- * @property {string} [notas]
- * @property {string} registradoPor - userId
- */
 
 const asistenciaService = {
   getAll: async () => getFromStorage(KEY),
@@ -38,6 +28,14 @@ const asistenciaService = {
 
     const newItem = { ...data, id: generateId() };
     saveToStorage(KEY, [...items, newItem]);
+
+    await auditService.registrar({
+      accion: 'ASISTENCIA',
+      entidad: 'Asistencia',
+      detalle: `Asistencia individual guardada: Interno ID [${data.internoId}] - Estado [${data.estado.toUpperCase()}] - Fecha ${data.fecha}`,
+      metadata: { asistenciaId: newItem.id, cursoId: data.cursoId, fecha: data.fecha },
+    });
+
     return newItem;
   },
 
@@ -57,6 +55,14 @@ const asistenciaService = {
     const nuevos = registros.map((r) => ({ ...r, id: generateId() }));
     const updated = [...sinEsteFecha, ...nuevos];
     saveToStorage(KEY, updated);
+
+    await auditService.registrar({
+      accion: 'ASISTENCIA',
+      entidad: 'Asistencia',
+      detalle: `Planilla de asistencia guardada: ${nuevos.length} registros para Curso ID [${cursoId}] en fecha ${fecha}`,
+      metadata: { cursoId, fecha, cantidad: nuevos.length },
+    });
+
     return nuevos;
   },
 
@@ -68,6 +74,14 @@ const asistenciaService = {
     const updated = { ...items[index], ...data };
     items[index] = updated;
     saveToStorage(KEY, items);
+
+    await auditService.registrar({
+      accion: 'ASISTENCIA',
+      entidad: 'Asistencia',
+      detalle: `Registro de asistencia modificado a [${updated.estado.toUpperCase()}] para fecha ${updated.fecha}`,
+      metadata: { asistenciaId: id, estado: updated.estado },
+    });
+
     return updated;
   },
 
@@ -76,7 +90,6 @@ const asistenciaService = {
     saveToStorage(KEY, items.filter((a) => a.id !== id));
   },
 
-  /** Obtiene asistencias de un curso en un rango de fechas */
   getByCursoYFecha: async (cursoId, fechaDesde, fechaHasta) => {
     const items = getFromStorage(KEY);
     return items.filter((a) => {
@@ -87,7 +100,6 @@ const asistenciaService = {
     });
   },
 
-  /** Obtiene asistencias de un interno en un curso */
   getByInternoYCurso: async (internoId, cursoId) => {
     const items = getFromStorage(KEY);
     return items
@@ -95,7 +107,6 @@ const asistenciaService = {
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
   },
 
-  /** Obtiene todos los registros de una fecha específica para un curso */
   getByFechaYCurso: async (cursoId, fecha) => {
     const items = getFromStorage(KEY);
     return items.filter((a) => a.cursoId === cursoId && a.fecha === fecha);

@@ -1,10 +1,18 @@
 /**
- * @fileoverview ReportesPage — Generación y exportación de reportes académicos detallados por materia.
+ * @fileoverview ReportesPage — Generación y exportación de reportes académicos detallados por materia responsivo.
  * Incluye lista de internos cursando, % de presentismo y concepto cualitativo del docente.
  */
 
 import { useEffect, useState } from 'react';
-import { Download, BookOpen, User, Award, Edit3, Check, X, FileText, BarChart2 } from 'lucide-react';
+import {
+  Download,
+  BookOpen,
+  User,
+  Edit3,
+  Check,
+  X,
+  AlertTriangle,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../components/layout/MainLayout.jsx';
 import useCursosStore from '../store/cursosStore.js';
@@ -14,7 +22,7 @@ import useAsistenciaStore from '../store/asistenciaStore.js';
 import useAuthStore from '../store/authStore.js';
 import usePermisos from '../hooks/usePermisos.js';
 import evaluacionesService from '../services/localStorage/evaluacionesService.js';
-import { calcularPresentismo, getColorPresentismo, detectarFaltasConsecutivas } from '../utils/asistenciaUtils.js';
+import { calcularPresentismo, detectarFaltasConsecutivas } from '../utils/asistenciaUtils.js';
 import { exportToCsv } from '../services/csv/csvService.js';
 
 const ReportesPage = () => {
@@ -28,7 +36,6 @@ const ReportesPage = () => {
   const [cursoSeleccionadoId, setCursoSeleccionadoId] = useState('');
   const [evaluaciones, setEvaluaciones] = useState([]);
   const [editandoConcepto, setEditandoConcepto] = useState(null); // { internoId, concepto, calificacion, periodo }
-  const [loadingEval, setLoadingEval] = useState(false);
 
   useEffect(() => {
     fetchCursos();
@@ -49,14 +56,11 @@ const ReportesPage = () => {
   useEffect(() => {
     if (!cursoSeleccionadoId) return;
     const loadEvals = async () => {
-      setLoadingEval(true);
       try {
         const evs = await evaluacionesService.getByCurso(cursoSeleccionadoId);
         setEvaluaciones(evs);
       } catch (err) {
         console.error('Error al cargar evaluaciones:', err);
-      } finally {
-        setLoadingEval(false);
       }
     };
     loadEvals();
@@ -99,90 +103,117 @@ const ReportesPage = () => {
     }
 
     try {
-      const existing = evaluaciones.find((e) => e.internoId === internoId);
-      if (existing) {
-        await evaluacionesService.update(existing.id, {
-          concepto: editandoConcepto.concepto,
-          calificacion: editandoConcepto.calificacion ? Number(editandoConcepto.calificacion) : null,
-          periodo: editandoConcepto.periodo || '1er Cuatrimestre',
-        });
+      const evalExistente = evaluaciones.find(
+        (e) => e.internoId === internoId && e.cursoId === cursoSeleccionadoId
+      );
+
+      const payload = {
+        internoId,
+        cursoId: cursoSeleccionadoId,
+        concepto: editandoConcepto.concepto.trim(),
+        calificacion: editandoConcepto.calificacion ? Number(editandoConcepto.calificacion) : null,
+        periodo: editandoConcepto.periodo || 'Ciclo 2025',
+        creadoPor: usuario?.id || 'sistema',
+      };
+
+      if (evalExistente) {
+        const updated = await evaluacionesService.update(evalExistente.id, payload);
+        setEvaluaciones((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
       } else {
-        await evaluacionesService.create({
-          internoId,
-          cursoId: cursoSeleccionadoId,
-          concepto: editandoConcepto.concepto,
-          calificacion: editandoConcepto.calificacion ? Number(editandoConcepto.calificacion) : null,
-          periodo: editandoConcepto.periodo || '1er Cuatrimestre',
-          creadoPor: usuario?.id || 'sistema',
-        });
+        const nuevo = await evaluacionesService.create(payload);
+        setEvaluaciones((prev) => [...prev, nuevo]);
       }
 
-      // Refrescar evaluaciones locales
-      const evs = await evaluacionesService.getByCurso(cursoSeleccionadoId);
-      setEvaluaciones(evs);
+      toast.success('Concepto docente guardado.');
       setEditandoConcepto(null);
-      toast.success('Concepto docente guardado correctamente.');
-    } catch (err) {
-      toast.error('Error al guardar la evaluación: ' + err.message);
+    } catch {
+      toast.error('Error al guardar la evaluación.');
     }
   };
 
   const handleExportarReporte = () => {
-    if (!cursoActual) return;
-    if (listaInternosData.length === 0) {
-      toast.error('No hay datos para exportar en este curso.');
+    if (!cursoActual || listaInternosData.length === 0) {
+      toast.error('No hay datos para exportar.');
       return;
     }
 
-    const dataExport = listaInternosData.map(({ interno, stats, evaluacion, alerta }) => ({
-      Materia: cursoActual.nombre,
-      CodigoMateria: cursoActual.codigo,
+    const dataExport = listaInternosData.map(({ interno, stats, alerta, evaluacion }) => ({
+      Curso: cursoActual.nombre,
+      CodigoCurso: cursoActual.codigo,
       ApellidoPaterno: interno.apellidoPaterno,
       ApellidoMaterno: interno.apellidoMaterno,
-      NombreCompleto: interno.nombreCompleto,
+      Nombres: interno.nombreCompleto,
       DNI: interno.dni,
-      FichaCriminologica: interno.fichaCriminologica,
+      Ficha: interno.fichaCriminologica,
       Pabellon: interno.pabellon,
       Celda: interno.celda,
-      ClasesTotales: stats.total,
-      Presentes: stats.presentes,
-      Ausentes: stats.ausentes,
-      Tardes: stats.tarde,
-      Justificados: stats.justificado,
-      PorcentajePresentismo: `${stats.porcentaje}%`,
-      AlertaFaltasConsecutivas: alerta.tieneAlerta ? `SI (${alerta.rachaActual} consecutivas)` : 'NO',
-      ConceptoDocente: evaluacion?.concepto || 'Sin evaluar',
+      PresentismoPorcentaje: `${stats.porcentaje}%`,
+      ClasesPresente: stats.presente,
+      ClasesAusente: stats.ausente,
+      Tardanzas: stats.tarde,
+      Justificadas: stats.justificado,
+      TotalClases: stats.total,
+      AlertaFaltas: alerta.tieneAlerta ? `SI (${alerta.faltasConsecutivas} consecutivas)` : 'NO',
+      ConceptoDocente: evaluacion?.concepto || 'Sin asentar',
       Calificacion: evaluacion?.calificacion ?? 'N/A',
       Periodo: evaluacion?.periodo || 'N/A',
     }));
 
-    exportToCsv(dataExport, `Reporte_Academico_${cursoActual.codigo}_${new Date().toISOString().split('T')[0]}.csv`);
-    toast.success('Reporte exportado exitosamente a CSV.');
+    exportToCsv(
+      dataExport,
+      `reporte_academico_${cursoActual.codigo}_${new Date().toISOString().split('T')[0]}.csv`,
+      [
+        'Curso',
+        'CodigoCurso',
+        'ApellidoPaterno',
+        'ApellidoMaterno',
+        'Nombres',
+        'DNI',
+        'Ficha',
+        'Pabellon',
+        'Celda',
+        'PresentismoPorcentaje',
+        'ClasesPresente',
+        'ClasesAusente',
+        'Tardanzas',
+        'Justificadas',
+        'TotalClases',
+        'AlertaFaltas',
+        'ConceptoDocente',
+        'Calificacion',
+        'Periodo',
+      ]
+    );
+
+    toast.success('Reporte exportado correctamente en CSV.');
   };
 
-  const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: '#e2e8f0',
-  };
+  // Promedio de presentismo del curso
+  const presentismoGeneralCurso =
+    listaInternosData.length > 0
+      ? Math.round(
+          listaInternosData.reduce((acc, curr) => acc + curr.stats.porcentaje, 0) /
+            listaInternosData.length
+        )
+      : 0;
 
   return (
-    <MainLayout titulo="Reportes Académicos" subtitulo="Rendimiento, presentismo y conceptos docentes por materia">
-      {/* Selector de Materia y Acciones */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <label className="text-muted fw-semibold mb-0" style={{ fontSize: '0.88rem' }}>
-            Materia / Curso:
-          </label>
+    <MainLayout
+      titulo="Reportes Académicos"
+      subtitulo="Rendimiento por materia, asistencia acumulada y conceptos evaluativos"
+    >
+      {/* Selector de Materia y Exportar */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: 440 }}>
           <select
             className="form-select"
-            style={{ ...inputStyle, minWidth: 260 }}
             value={cursoSeleccionadoId}
             onChange={(e) => {
               setCursoSeleccionadoId(e.target.value);
               setEditandoConcepto(null);
             }}
           >
+            <option value="">-- Seleccionar curso / materia --</option>
             {cursos.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre} ({c.codigo}) — {c.status.toUpperCase()}
@@ -191,257 +222,373 @@ const ReportesPage = () => {
           </select>
         </div>
 
-        <div>
-          <button
-            className="btn btn-sm d-flex align-items-center gap-2 fw-semibold px-3 py-2"
-            style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: 'white',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
-            }}
-            onClick={handleExportarReporte}
-          >
-            <Download size={16} /> Exportar Reporte CSV
-          </button>
+        <div className="d-flex gap-2">
+          {puedeExportarReportes && (
+            <button
+              type="button"
+              className="btn btn-sm d-flex align-items-center gap-1 rounded-3 px-3 py-2"
+              style={{
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-main)',
+              }}
+              onClick={handleExportarReporte}
+              disabled={!cursoActual || listaInternosData.length === 0}
+            >
+              <Download size={14} /> Exportar Planilla CSV
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Resumen de la Materia */}
-      {cursoActual && (
-        <div className="row g-3 mb-4">
-          <div className="col-md-4">
-            <div
-              className="p-3 rounded-3 h-100"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <div className="text-muted" style={{ fontSize: '0.78rem' }}>MATERIA</div>
-              <div className="text-white fw-bold" style={{ fontSize: '1.1rem' }}>{cursoActual.nombre}</div>
-              <div className="text-info" style={{ fontSize: '0.8rem' }}>Código: {cursoActual.codigo}</div>
-            </div>
-          </div>
-          <div className="col-md-4">
-            <div
-              className="p-3 rounded-3 h-100"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <div className="text-muted" style={{ fontSize: '0.78rem' }}>INTERNOS INSCRITOS</div>
-              <div className="text-white fw-bold" style={{ fontSize: '1.1rem' }}>
-                {listaInternosData.length} alumno(s)
+      {!cursoActual ? (
+        <div
+          className="app-card rounded-4 p-5 text-center text-muted"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+        >
+          <BookOpen size={48} className="mb-3 opacity-50" />
+          <h2 className="h6 fw-semibold" style={{ color: 'var(--text-heading)' }}>
+            Seleccioná un curso para generar el reporte
+          </h2>
+        </div>
+      ) : (
+        <div>
+          {/* Header de Resumen del Curso */}
+          <div className="row g-3 mb-4">
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div
+                className="app-card rounded-4 p-3 h-100"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+              >
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  Total Inscriptos
+                </div>
+                <div
+                  className="fw-bold"
+                  style={{ fontSize: '1.6rem', color: 'var(--text-heading)' }}
+                >
+                  {listaInternosData.length} alumnos
+                </div>
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  En cursada activa
+                </div>
               </div>
-              <div className="text-muted" style={{ fontSize: '0.8rem' }}>Con cursada activa</div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div
+                className="app-card rounded-4 p-3 h-100"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+              >
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  Presentismo General
+                </div>
+                <div
+                  className="fw-bold"
+                  style={{
+                    fontSize: '1.6rem',
+                    color:
+                      presentismoGeneralCurso >= 75
+                        ? 'var(--success-color)'
+                        : presentismoGeneralCurso >= 50
+                        ? 'var(--warning-color)'
+                        : 'var(--danger-color)',
+                  }}
+                >
+                  {presentismoGeneralCurso}%
+                </div>
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  Promedio de asistencia de la materia
+                </div>
+              </div>
+            </div>
+
+            <div className="col-12 col-lg-4">
+              <div
+                className="app-card rounded-4 p-3 h-100"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+              >
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  Evaluaciones Asentadas
+                </div>
+                <div
+                  className="fw-bold"
+                  style={{ fontSize: '1.6rem', color: 'var(--primary-accent)' }}
+                >
+                  {evaluaciones.length} / {listaInternosData.length}
+                </div>
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  Conceptos docentes registrados
+                </div>
+              </div>
             </div>
           </div>
-          <div className="col-md-4">
+
+          {/* Tabla Detallada por Interno */}
+          {listaInternosData.length === 0 ? (
             <div
-              className="p-3 rounded-3 h-100"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="app-card rounded-4 p-5 text-center text-muted"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
             >
-              <div className="text-muted" style={{ fontSize: '0.78rem' }}>PROMEDIO DE ASISTENCIA</div>
-              {(() => {
-                const totalPct = listaInternosData.reduce((acc, curr) => acc + curr.stats.porcentaje, 0);
-                const avgPct = listaInternosData.length > 0 ? Math.round(totalPct / listaInternosData.length) : 0;
-                return (
-                  <>
-                    <div className={`fw-bold text-${getColorPresentismo(avgPct)}`} style={{ fontSize: '1.1rem' }}>
-                      {avgPct}% general
-                    </div>
-                    <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-                      {listaInternosData.filter((i) => i.alerta.tieneAlerta).length} interno(s) con alerta de faltas
-                    </div>
-                  </>
-                );
-              })()}
+              <User size={48} className="mb-3 opacity-50" />
+              <h2 className="h6 fw-semibold" style={{ color: 'var(--text-heading)' }}>
+                No hay internos inscriptos en este curso
+              </h2>
             </div>
-          </div>
+          ) : (
+            <div
+              className="app-card rounded-4 overflow-hidden"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="table-responsive">
+                <table className="table table-dark table-hover mb-0 align-middle">
+                  <thead
+                    style={{
+                      background: 'var(--bg-input)',
+                      fontSize: '0.76rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    <tr>
+                      <th className="py-3 ps-4" style={{ color: 'var(--text-muted)' }}>
+                        Interno / DNI
+                      </th>
+                      <th className="py-3" style={{ color: 'var(--text-muted)' }}>
+                        Ubicación
+                      </th>
+                      <th className="py-3" style={{ color: 'var(--text-muted)' }}>
+                        Presentismo
+                      </th>
+                      <th className="py-3" style={{ color: 'var(--text-muted)' }}>
+                        Desglose Asistencia
+                      </th>
+                      <th className="py-3 pe-4" style={{ color: 'var(--text-muted)', minWidth: 280 }}>
+                        Concepto Evaluativo Docente
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody style={{ fontSize: '0.86rem' }}>
+                    {listaInternosData.map(({ interno, stats, alerta, evaluacion }) => {
+                      const estaEditando = editandoConcepto?.internoId === interno.id;
+
+                      return (
+                        <tr key={interno.id} style={{ borderColor: 'var(--border-subtle)' }}>
+                          {/* Interno */}
+                          <td className="py-3 ps-4">
+                            <div className="fw-semibold" style={{ color: 'var(--text-heading)' }}>
+                              {interno.apellidoPaterno} {interno.apellidoMaterno}, {interno.nombreCompleto}
+                            </div>
+                            <div className="text-muted font-monospace" style={{ fontSize: '0.72rem' }}>
+                              DNI: {interno.dni} · Ficha: {interno.fichaCriminologica}
+                            </div>
+                            {alerta.tieneAlerta && (
+                              <div
+                                className="badge mt-1 d-inline-flex align-items-center gap-1"
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.15)',
+                                  color: 'var(--danger-color)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  fontSize: '0.7rem',
+                                }}
+                              >
+                                <AlertTriangle size={11} /> {alerta.faltasConsecutivas} inasistencias seguidas
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Ubicación */}
+                          <td className="py-3">
+                            <span
+                              className="badge"
+                              style={{
+                                background: 'var(--bg-input)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-main)',
+                              }}
+                            >
+                              Pab. {interno.pabellon} - C. {interno.celda}
+                            </span>
+                          </td>
+
+                          {/* Presentismo */}
+                          <td className="py-3">
+                            <div className="d-flex align-items-center gap-2">
+                              <span
+                                className="fw-bold"
+                                style={{
+                                  fontSize: '1rem',
+                                  color:
+                                    stats.porcentaje >= 75
+                                      ? 'var(--success-color)'
+                                      : stats.porcentaje >= 50
+                                      ? 'var(--warning-color)'
+                                      : 'var(--danger-color)',
+                                }}
+                              >
+                                {stats.porcentaje}%
+                              </span>
+                              <div
+                                className="progress flex-grow-1"
+                                style={{ width: 60, height: 6, background: 'rgba(255,255,255,0.1)' }}
+                              >
+                                <div
+                                  className="progress-bar"
+                                  style={{
+                                    width: `${stats.porcentaje}%`,
+                                    background:
+                                      stats.porcentaje >= 75
+                                        ? 'var(--success-color)'
+                                        : stats.porcentaje >= 50
+                                        ? 'var(--warning-color)'
+                                        : 'var(--danger-color)',
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Desglose */}
+                          <td className="py-3">
+                            <div className="d-flex gap-1" style={{ fontSize: '0.75rem' }}>
+                              <span className="text-success">{stats.presente}P</span>
+                              <span className="text-muted">/</span>
+                              <span className="text-danger">{stats.ausente}A</span>
+                              <span className="text-muted">/</span>
+                              <span className="text-warning">{stats.tarde}T</span>
+                              <span className="text-muted">/</span>
+                              <span className="text-info">{stats.justificado}J</span>
+                            </div>
+                            <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                              {stats.total} clases totales
+                            </div>
+                          </td>
+
+                          {/* Concepto Evaluativo */}
+                          <td className="py-3 pe-4">
+                            {estaEditando ? (
+                              <div className="d-flex flex-column gap-2 p-2 rounded-3" style={{ background: 'var(--bg-input)' }}>
+                                <textarea
+                                  className="form-control form-control-sm"
+                                  rows={2}
+                                  value={editandoConcepto.concepto}
+                                  placeholder="Escribí el concepto docente (participación, conducta, avances)..."
+                                  onChange={(e) =>
+                                    setEditandoConcepto((prev) => ({
+                                      ...prev,
+                                      concepto: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <div className="d-flex gap-2">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    className="form-control form-control-sm"
+                                    style={{ width: 70 }}
+                                    placeholder="Nota"
+                                    value={editandoConcepto.calificacion ?? ''}
+                                    onChange={(e) =>
+                                      setEditandoConcepto((prev) => ({
+                                        ...prev,
+                                        calificacion: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Período (ej: 1er Cuatr. 2025)"
+                                    value={editandoConcepto.periodo}
+                                    onChange={(e) =>
+                                      setEditandoConcepto((prev) => ({
+                                        ...prev,
+                                        periodo: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-success p-1 px-2"
+                                    onClick={() => handleGuardarConcepto(interno.id)}
+                                    title="Guardar concepto"
+                                  >
+                                    <Check size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-secondary p-1 px-2"
+                                    onClick={() => setEditandoConcepto(null)}
+                                    title="Cancelar"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="d-flex align-items-start justify-content-between gap-2">
+                                <div className="flex-grow-1">
+                                  {evaluacion ? (
+                                    <div>
+                                      <p className="mb-1" style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>
+                                        "{evaluacion.concepto}"
+                                      </p>
+                                      <div className="d-flex align-items-center gap-2" style={{ fontSize: '0.72rem' }}>
+                                        {evaluacion.calificacion && (
+                                          <span
+                                            className="badge"
+                                            style={{
+                                              background: 'rgba(16, 185, 129, 0.2)',
+                                              color: 'var(--success-color)',
+                                            }}
+                                          >
+                                            Nota: {evaluacion.calificacion}/10
+                                          </span>
+                                        )}
+                                        <span className="text-muted">({evaluacion.periodo})</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>
+                                      Sin concepto docente asentado
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm p-1 px-2 rounded-2"
+                                  style={{
+                                    background: 'var(--bg-input)',
+                                    color: 'var(--primary-accent)',
+                                    border: '1px solid var(--border-subtle)',
+                                    fontSize: '0.75rem',
+                                  }}
+                                  onClick={() =>
+                                    setEditandoConcepto({
+                                      internoId: interno.id,
+                                      concepto: evaluacion?.concepto || '',
+                                      calificacion: evaluacion?.calificacion ?? '',
+                                      periodo: evaluacion?.periodo || '1er Cuatrimestre 2025',
+                                    })
+                                  }
+                                >
+                                  <Edit3 size={13} className="me-1" />
+                                  {evaluacion ? 'Editar' : 'Evaluar'}
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Tabla detallada de reporte */}
-      <div
-        className="rounded-4 overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-      >
-        {listaInternosData.length === 0 ? (
-          <div className="text-center py-5 text-muted">
-            <FileText size={48} className="mb-3 opacity-40" />
-            <p>No hay internos inscritos en esta materia actualmente.</p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-dark table-hover mb-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-              <thead style={{ background: 'rgba(255,255,255,0.05)', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <tr>
-                  <th className="text-muted fw-normal py-3 ps-4" style={{ width: '22%' }}>Interno / Ubicación</th>
-                  <th className="text-muted fw-normal py-3 text-center" style={{ width: '20%' }}>% Presentismo</th>
-                  <th className="text-muted fw-normal py-3 text-center" style={{ width: '15%' }}>Desglose Clases</th>
-                  <th className="text-muted fw-normal py-3" style={{ width: '33%' }}>Concepto Evaluativo Docente</th>
-                  <th className="text-muted fw-normal py-3 text-center" style={{ width: '10%' }}>Acción</th>
-                </tr>
-              </thead>
-              <tbody style={{ fontSize: '0.88rem' }}>
-                {listaInternosData.map(({ interno, stats, alerta, evaluacion }) => {
-                  const estaEditando = editandoConcepto?.internoId === interno.id;
-                  const colorBadge = getColorPresentismo(stats.porcentaje);
-
-                  return (
-                    <tr key={interno.id} style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                      {/* Identificación del Interno */}
-                      <td className="py-3 ps-4 align-middle">
-                        <div className="text-white fw-semibold">
-                          {interno.apellidoPaterno} {interno.apellidoMaterno}, {interno.nombreCompleto}
-                        </div>
-                        <div className="text-muted" style={{ fontSize: '0.78rem' }}>
-                          DNI: {interno.dni} · <span className="text-secondary font-monospace">Ficha: {interno.fichaCriminologica}</span>
-                        </div>
-                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                          Pab. <span className="text-white">{interno.pabellon}</span> — Celda {interno.celda}
-                        </div>
-                        {alerta.tieneAlerta && (
-                          <div className="text-danger mt-1 fw-semibold" style={{ fontSize: '0.75rem' }}>
-                            ⚠ Alerta: {alerta.rachaActual} faltas consecutivas
-                          </div>
-                        )}
-                      </td>
-
-                      {/* % Asistencia */}
-                      <td className="py-3 align-middle text-center">
-                        <div className={`fw-bold fs-5 text-${colorBadge}`}>
-                          {stats.porcentaje}%
-                        </div>
-                        <div className="progress mx-auto mt-1" style={{ height: 6, maxWidth: 120, background: 'rgba(255,255,255,0.1)' }}>
-                          <div
-                            className={`progress-bar bg-${colorBadge}`}
-                            style={{ width: `${stats.porcentaje}%` }}
-                          />
-                        </div>
-                      </td>
-
-                      {/* Desglose asistencias */}
-                      <td className="py-3 align-middle text-center" style={{ fontSize: '0.78rem' }}>
-                        <div className="d-flex justify-content-center gap-2 flex-wrap">
-                          <span className="badge bg-success bg-opacity-25 text-success">P: {stats.presentes}</span>
-                          <span className="badge bg-danger bg-opacity-25 text-danger">A: {stats.ausentes}</span>
-                          <span className="badge bg-warning bg-opacity-25 text-warning">T: {stats.tarde}</span>
-                          <span className="badge bg-info bg-opacity-25 text-info">J: {stats.justificado}</span>
-                        </div>
-                        <div className="text-muted mt-1" style={{ fontSize: '0.72rem' }}>
-                          Total: {stats.total} clases
-                        </div>
-                      </td>
-
-                      {/* Concepto Docente */}
-                      <td className="py-3 align-middle">
-                        {estaEditando ? (
-                          <div className="d-flex flex-column gap-2">
-                            <textarea
-                              className="form-control form-control-sm"
-                              rows={3}
-                              style={{ ...inputStyle, resize: 'none' }}
-                              placeholder="Escriba el concepto cualitativo del alumno..."
-                              value={editandoConcepto.concepto}
-                              onChange={(e) =>
-                                setEditandoConcepto({ ...editandoConcepto, concepto: e.target.value })
-                              }
-                            />
-                            <div className="d-flex gap-2">
-                              <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                className="form-control form-control-sm"
-                                style={{ ...inputStyle, width: 80 }}
-                                placeholder="Nota (1-10)"
-                                value={editandoConcepto.calificacion || ''}
-                                onChange={(e) =>
-                                  setEditandoConcepto({ ...editandoConcepto, calificacion: e.target.value })
-                                }
-                              />
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                style={{ ...inputStyle, flex: 1 }}
-                                placeholder="Período (ej: 1er Cuatrimestre)"
-                                value={editandoConcepto.periodo}
-                                onChange={(e) =>
-                                  setEditandoConcepto({ ...editandoConcepto, periodo: e.target.value })
-                                }
-                              />
-                            </div>
-                          </div>
-                        ) : evaluacion ? (
-                          <div>
-                            <div className="text-white" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>
-                              "{evaluacion.concepto}"
-                            </div>
-                            <div className="d-flex align-items-center gap-2 mt-1">
-                              {evaluacion.calificacion && (
-                                <span className="badge bg-primary bg-opacity-25 text-primary">
-                                  Calificación: {evaluacion.calificacion}/10
-                                </span>
-                              )}
-                              <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                                {evaluacion.periodo}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-muted" style={{ fontSize: '0.82rem', fontStyle: 'italic' }}>
-                            Sin evaluación cualitativa registrada.
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Botón de edición de concepto */}
-                      <td className="py-3 align-middle text-center">
-                        {estaEditando ? (
-                          <div className="d-flex justify-content-center gap-1">
-                            <button
-                              className="btn btn-sm btn-success p-1"
-                              title="Guardar concepto"
-                              onClick={() => handleGuardarConcepto(interno.id)}
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button
-                              className="btn btn-sm btn-secondary p-1"
-                              title="Cancelar"
-                              onClick={() => setEditandoConcepto(null)}
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            className="btn btn-sm rounded-2"
-                            style={{
-                              background: 'rgba(99,102,241,0.15)',
-                              color: '#a5b4fc',
-                              border: '1px solid rgba(99,102,241,0.3)',
-                              fontSize: '0.78rem',
-                            }}
-                            onClick={() =>
-                              setEditandoConcepto({
-                                internoId: interno.id,
-                                concepto: evaluacion?.concepto || '',
-                                calificacion: evaluacion?.calificacion || '',
-                                periodo: evaluacion?.periodo || '1er Cuatrimestre',
-                              })
-                            }
-                          >
-                            <Edit3 size={13} className="me-1" />
-                            {evaluacion ? 'Editar' : 'Evaluar'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </MainLayout>
   );
 };

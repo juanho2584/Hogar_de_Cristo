@@ -1,22 +1,11 @@
 /**
- * @fileoverview Servicio de Evaluaciones docentes — Implementación localStorage.
+ * @fileoverview Servicio de Evaluaciones docentes — Implementación localStorage con auditoría.
  */
 
 import { generateId, getFromStorage, saveToStorage, STORAGE_KEYS } from './storageUtils.js';
+import auditService from './auditService.js';
 
 const KEY = STORAGE_KEYS.EVALUACIONES;
-
-/**
- * @typedef {Object} EvaluacionDocente
- * @property {string} id
- * @property {string} internoId
- * @property {string} cursoId
- * @property {string} concepto - Texto libre del docente
- * @property {number} [calificacion] - 1-10
- * @property {string} periodo - Ej: '1er Cuatrimestre 2025'
- * @property {string} creadoPor - userId
- * @property {string} actualizadoEn - ISO timestamp
- */
 
 const evaluacionesService = {
   getAll: async () => getFromStorage(KEY),
@@ -34,6 +23,14 @@ const evaluacionesService = {
       actualizadoEn: new Date().toISOString(),
     };
     saveToStorage(KEY, [...items, newItem]);
+
+    await auditService.registrar({
+      accion: 'EVALUACION',
+      entidad: 'Evaluaciones',
+      detalle: `Evaluación registrada para Interno ID [${newItem.internoId}] en Período ${newItem.periodo}`,
+      metadata: { evaluacionId: newItem.id, internoId: newItem.internoId, cursoId: newItem.cursoId },
+    });
+
     return newItem;
   },
 
@@ -45,6 +42,14 @@ const evaluacionesService = {
     const updated = { ...items[index], ...data, actualizadoEn: new Date().toISOString() };
     items[index] = updated;
     saveToStorage(KEY, items);
+
+    await auditService.registrar({
+      accion: 'EDITAR',
+      entidad: 'Evaluaciones',
+      detalle: `Evaluación actualizada para Interno ID [${updated.internoId}]`,
+      metadata: { evaluacionId: id },
+    });
+
     return updated;
   },
 

@@ -1,5 +1,5 @@
 /**
- * @fileoverview CursosPage — CRUD completo de cursos/materias.
+ * @fileoverview CursosPage — CRUD y gestión académica de cursos/materias responsivo.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,7 +18,11 @@ import { formatearFechaCorta } from '../utils/dateUtils.js';
 import { ACADEMIC_CONFIG, DIAS_NOMBRES } from '../config/academicConfig.js';
 
 const STATUS_LABELS = { activo: 'Activo', finalizado: 'Finalizado', cancelado: 'Cancelado' };
-const STATUS_COLORS = { activo: 'success', finalizado: 'info', cancelado: 'danger' };
+const STATUS_BADGE_STYLE = {
+  activo: { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' },
+  finalizado: { bg: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' },
+  cancelado: { bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+};
 const TODOS_LOS_DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 
 const CursosPage = () => {
@@ -30,7 +34,14 @@ const CursosPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
     resolver: yupResolver(cursoSchema),
     defaultValues: {
       diasCursada: ACADEMIC_CONFIG.diasLectivos,
@@ -48,7 +59,16 @@ const CursosPage = () => {
 
   const abrirModalNuevo = () => {
     setEditando(null);
-    reset({ diasCursada: ACADEMIC_CONFIG.diasLectivos, status: 'activo' });
+    reset({
+      nombre: '',
+      codigo: '',
+      descripcion: '',
+      docenteId: '',
+      fechaInicio: '',
+      fechaFin: '',
+      diasCursada: ACADEMIC_CONFIG.diasLectivos,
+      status: 'activo',
+    });
     setShowModal(true);
   };
 
@@ -56,19 +76,24 @@ const CursosPage = () => {
     setEditando(curso);
     reset({
       ...curso,
-      diasCursada: typeof curso.diasCursada === 'string'
-        ? curso.diasCursada.split(',')
-        : curso.diasCursada,
+      diasCursada:
+        typeof curso.diasCursada === 'string'
+          ? curso.diasCursada.split(',')
+          : curso.diasCursada,
     });
     setShowModal(true);
   };
 
-  const cerrarModal = () => { setShowModal(false); setEditando(null); reset(); };
+  const cerrarModal = () => {
+    setShowModal(false);
+    setEditando(null);
+    reset();
+  };
 
   const toggleDia = (dia) => {
     const actual = watch('diasCursada') || [];
     if (actual.includes(dia)) {
-      setValue('diasCursada', actual.filter(d => d !== dia));
+      setValue('diasCursada', actual.filter((d) => d !== dia));
     } else {
       setValue('diasCursada', [...actual, dia]);
     }
@@ -96,83 +121,108 @@ const CursosPage = () => {
     else toast.error(result.error);
   };
 
-  const getDocente = (docenteId) => usuarios.find(u => u.id === docenteId);
-  const getCantidadInscriptos = (cursoId) => inscripciones.filter(i => i.cursoId === cursoId && i.status === 'activo').length;
-
-  const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: '#e2e8f0',
-  };
+  const getDocente = (docenteId) => usuarios.find((u) => u.id === docenteId);
+  const getCantidadInscriptos = (cursoId) =>
+    inscripciones.filter((i) => i.cursoId === cursoId && i.status === 'activo').length;
 
   return (
-    <MainLayout titulo="Cursos / Materias" subtitulo={`${cursos.length} cursos registrados`}>
+    <MainLayout titulo="Cursos / Materias" subtitulo={`${cursos.length} cursos registrados en el programa`}>
       {/* Toolbar */}
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
-        <div className="ms-auto d-flex gap-2">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div className="text-muted" style={{ fontSize: '0.85rem' }}>
+          Oferta académica activa: <strong style={{ color: 'var(--text-heading)' }}>{cursos.filter(c => c.status === 'activo').length}</strong>
+        </div>
+        <div className="d-flex gap-2">
           <button
-            className="btn btn-sm d-flex align-items-center gap-1"
-            style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)' }}
-            onClick={() => { exportToCsv(cursos, CSV_CONFIG.cursos.filename, CSV_CONFIG.cursos.fields); toast.success('CSV exportado.'); }}
+            type="button"
+            className="btn btn-sm d-flex align-items-center gap-1 rounded-3 px-3 py-2"
+            style={{
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-main)',
+            }}
+            onClick={() => {
+              exportToCsv(cursos, CSV_CONFIG.cursos.filename, CSV_CONFIG.cursos.fields);
+              toast.success('CSV exportado.');
+            }}
           >
             <Download size={14} /> Exportar CSV
           </button>
           {puedeEditar && (
             <button
               id="btn-nuevo-curso"
-              className="btn btn-sm d-flex align-items-center gap-1 fw-semibold"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none' }}
+              type="button"
+              className="btn btn-sm d-flex align-items-center gap-1 fw-semibold rounded-3 px-3 py-2"
+              style={{
+                background: 'var(--primary-gradient)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 4px 12px var(--primary-glow)',
+              }}
               onClick={abrirModalNuevo}
             >
-              <Plus size={14} /> Nuevo Curso
+              <Plus size={16} /> Nuevo Curso
             </button>
           )}
         </div>
       </div>
 
-      {/* Cards de cursos */}
+      {/* Grid de Cursos Responsivo */}
       {loading ? (
-        <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+        <div className="text-center py-5">
+          <div className="spinner-border" style={{ color: 'var(--primary-accent)' }} />
+        </div>
       ) : cursos.length === 0 ? (
         <div className="text-center py-5 text-muted">
           <BookOpen size={48} className="mb-3 opacity-50" />
-          <p>No hay cursos registrados.</p>
+          <p>No hay cursos registrados actualmente.</p>
         </div>
       ) : (
         <div className="row g-3">
           {cursos.map((curso) => {
             const docente = getDocente(curso.docenteId);
             const inscriptos = getCantidadInscriptos(curso.id);
-            const dias = typeof curso.diasCursada === 'string'
-              ? curso.diasCursada.split(',')
-              : (curso.diasCursada || []);
+            const dias =
+              typeof curso.diasCursada === 'string'
+                ? curso.diasCursada.split(',')
+                : curso.diasCursada || [];
+            const badgeStyle = STATUS_BADGE_STYLE[curso.status] || STATUS_BADGE_STYLE.activo;
 
             return (
-              <div key={curso.id} className="col-12 col-md-6 col-lg-4">
+              <div key={curso.id} className="col-12 col-md-6 col-xl-4">
                 <div
-                  className="rounded-4 p-4 h-100 d-flex flex-column"
+                  className="app-card rounded-4 p-3 p-md-4 h-100 d-flex flex-column"
                   style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    transition: 'all 0.2s ease',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  {/* Header */}
+                  {/* Header de Card */}
                   <div className="d-flex align-items-start justify-content-between mb-3">
                     <div>
-                      <span className="text-muted" style={{ fontSize: '0.72rem', fontFamily: 'monospace' }}>{curso.codigo}</span>
-                      <h3 className="h6 text-white mb-0 fw-bold">{curso.nombre}</h3>
+                      <span className="font-monospace text-muted" style={{ fontSize: '0.75rem' }}>
+                        {curso.codigo}
+                      </span>
+                      <h3 className="h6 mb-0 fw-bold text-truncate" style={{ color: 'var(--text-heading)', maxWidth: 220 }}>
+                        {curso.nombre}
+                      </h3>
                     </div>
-                    <span className={`badge bg-${STATUS_COLORS[curso.status]} bg-opacity-25 text-${STATUS_COLORS[curso.status]}`}>
-                      {STATUS_LABELS[curso.status]}
+                    <span
+                      className="badge"
+                      style={{
+                        background: badgeStyle.bg,
+                        color: badgeStyle.color,
+                        border: `1px solid ${badgeStyle.border}`,
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      {STATUS_LABELS[curso.status] || curso.status}
                     </span>
                   </div>
 
                   {/* Descripción */}
                   {curso.descripcion && (
-                    <p className="text-muted mb-3" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+                    <p className="text-muted mb-3" style={{ fontSize: '0.82rem', lineHeight: 1.4 }}>
                       {curso.descripcion}
                     </p>
                   )}
@@ -180,24 +230,39 @@ const CursosPage = () => {
                   {/* Info */}
                   <div className="d-flex flex-column gap-2 mb-3 flex-grow-1">
                     <div className="d-flex justify-content-between">
-                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>Docente</span>
-                      <span className="text-white" style={{ fontSize: '0.8rem' }}>{docente?.nombre || 'Sin asignar'}</span>
+                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>Docente:</span>
+                      <span className="fw-semibold" style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                        {docente?.nombre || 'Sin asignar'}
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
-                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>Inscriptos</span>
-                      <span className="text-white" style={{ fontSize: '0.8rem' }}>{inscriptos} interno/s</span>
+                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>Inscriptos:</span>
+                      <span className="fw-semibold" style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                        {inscriptos} alumnos
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
-                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>Período</span>
-                      <span className="text-white" style={{ fontSize: '0.8rem' }}>
+                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>Período:</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
                         {formatearFechaCorta(curso.fechaInicio)} → {formatearFechaCorta(curso.fechaFin)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted d-block mb-1" style={{ fontSize: '0.8rem' }}>Días de cursada</span>
+                      <span className="text-muted d-block mb-1" style={{ fontSize: '0.8rem' }}>
+                        Días de cursada:
+                      </span>
                       <div className="d-flex flex-wrap gap-1">
-                        {dias.map(dia => (
-                          <span key={dia} className="badge" style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.7rem' }}>
+                        {dias.map((dia) => (
+                          <span
+                            key={dia}
+                            className="badge"
+                            style={{
+                              background: 'rgba(99, 102, 241, 0.15)',
+                              color: 'var(--primary-accent)',
+                              border: '1px solid var(--border-subtle)',
+                              fontSize: '0.7rem',
+                            }}
+                          >
                             {DIAS_NOMBRES[dia] || dia}
                           </span>
                         ))}
@@ -207,20 +272,31 @@ const CursosPage = () => {
 
                   {/* Acciones */}
                   {(puedeEditar || puedeEliminar) && (
-                    <div className="d-flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="d-flex gap-2 pt-3 border-top border-secondary border-opacity-25">
                       {puedeEditar && (
                         <button
-                          className="btn btn-sm flex-grow-1"
-                          style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.8rem' }}
+                          type="button"
+                          className="btn btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 rounded-3"
+                          style={{
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            color: 'var(--primary-accent)',
+                            border: '1px solid var(--border-subtle)',
+                            fontSize: '0.8rem',
+                          }}
                           onClick={() => abrirModalEditar(curso)}
                         >
-                          <Edit2 size={13} className="me-1" /> Editar
+                          <Edit2 size={13} /> Editar
                         </button>
                       )}
                       {puedeEliminar && (
                         <button
-                          className="btn btn-sm"
-                          style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', fontSize: '0.8rem' }}
+                          type="button"
+                          className="btn btn-sm rounded-3 px-3"
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: 'var(--danger-color)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                          }}
                           onClick={() => confirmarEliminar(curso)}
                         >
                           <Trash2 size={13} />
@@ -235,117 +311,192 @@ const CursosPage = () => {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal Crear / Editar */}
       {showModal && (
         <div
-          className="modal d-flex align-items-center justify-content-center"
-          style={{ background: 'rgba(0,0,0,0.7)', position: 'fixed', inset: 0, zIndex: 2000, backdropFilter: 'blur(4px)' }}
+          className="app-modal-overlay"
           onClick={(e) => e.target === e.currentTarget && cerrarModal()}
         >
-          <div
-            className="rounded-4 p-4 w-100"
-            style={{
-              maxWidth: 580,
-              background: '#161b2e',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
-          >
-            <div className="d-flex align-items-center justify-content-between mb-4">
-              <h2 className="h5 text-white mb-0 fw-bold">{editando ? 'Editar Curso' : 'Nuevo Curso'}</h2>
-              <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8', border: 'none' }} onClick={cerrarModal}>
+          <div className="app-modal-content" style={{ maxWidth: '580px' }}>
+            <div className="d-flex align-items-center justify-content-between p-3 p-md-4 border-bottom border-secondary border-opacity-25">
+              <h2 className="h5 mb-0 fw-bold" style={{ color: 'var(--text-heading)' }}>
+                {editando ? 'Editar Curso' : 'Nuevo Curso'}
+              </h2>
+              <button
+                type="button"
+                className="btn btn-sm p-1 rounded-2"
+                style={{
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+                onClick={cerrarModal}
+              >
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} noValidate>
-              <div className="row g-3">
-                <div className="col-8">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Nombre del Curso *</label>
-                  <input className={`form-control ${errors.nombre ? 'is-invalid' : ''}`} style={inputStyle} {...register('nombre')} placeholder="Ej: Matemática" />
-                  {errors.nombre && <div className="invalid-feedback">{errors.nombre.message}</div>}
-                </div>
-                <div className="col-4">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Código *</label>
-                  <input className={`form-control ${errors.codigo ? 'is-invalid' : ''}`} style={inputStyle} {...register('codigo')} placeholder="MAT-01" />
-                  {errors.codigo && <div className="invalid-feedback">{errors.codigo.message}</div>}
-                </div>
-                <div className="col-12">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Descripción</label>
-                  <textarea className="form-control" style={{ ...inputStyle, resize: 'none' }} rows={2} {...register('descripcion')} />
-                </div>
-                <div className="col-12">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Docente *</label>
-                  <select className={`form-select ${errors.docenteId ? 'is-invalid' : ''}`} style={inputStyle} {...register('docenteId')}>
-                    <option value="">Seleccionar docente...</option>
-                    {usuarios.map(u => (
-                      <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
-                    ))}
-                  </select>
-                  {errors.docenteId && <div className="invalid-feedback">{errors.docenteId.message}</div>}
-                </div>
-
-                {/* Días de cursada */}
-                <div className="col-12">
-                  <label className="form-label text-muted d-block mb-2" style={{ fontSize: '0.8rem' }}>Días de Cursada *</label>
-                  <div className="d-flex flex-wrap gap-2">
-                    {TODOS_LOS_DIAS.map(dia => {
-                      const seleccionado = diasSeleccionados.includes(dia);
-                      const esDefault = ACADEMIC_CONFIG.diasLectivos.includes(dia);
-                      return (
-                        <button
-                          key={dia}
-                          type="button"
-                          onClick={() => toggleDia(dia)}
-                          className="btn btn-sm"
-                          style={{
-                            background: seleccionado ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.05)',
-                            color: seleccionado ? '#a5b4fc' : '#64748b',
-                            border: seleccionado ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.1)',
-                            fontSize: '0.78rem',
-                          }}
-                        >
-                          {DIAS_NOMBRES[dia]}
-                          {esDefault && <span className="ms-1 opacity-50" title="Día lectivo por defecto">●</span>}
-                        </button>
-                      );
-                    })}
+            <div className="app-modal-body">
+              <form id="form-curso" onSubmit={handleSubmit(onSubmit)} noValidate>
+                <div className="row g-3">
+                  <div className="col-12 col-md-8">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Nombre del Curso *
+                    </label>
+                    <input
+                      className={`form-control ${errors.nombre ? 'is-invalid' : ''}`}
+                      {...register('nombre')}
+                      placeholder="Carpintería Básica"
+                    />
+                    {errors.nombre && <div className="invalid-feedback">{errors.nombre.message}</div>}
                   </div>
-                  {errors.diasCursada && <div className="text-danger mt-1" style={{ fontSize: '0.78rem' }}>{errors.diasCursada.message}</div>}
-                </div>
 
-                <div className="col-6">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Fecha Inicio *</label>
-                  <input type="date" className={`form-control ${errors.fechaInicio ? 'is-invalid' : ''}`} style={inputStyle} {...register('fechaInicio')} />
-                  {errors.fechaInicio && <div className="invalid-feedback">{errors.fechaInicio.message}</div>}
-                </div>
-                <div className="col-6">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Fecha Fin *</label>
-                  <input type="date" className={`form-control ${errors.fechaFin ? 'is-invalid' : ''}`} style={inputStyle} {...register('fechaFin')} />
-                  {errors.fechaFin && <div className="invalid-feedback">{errors.fechaFin.message}</div>}
-                </div>
-                <div className="col-6">
-                  <label className="form-label text-muted" style={{ fontSize: '0.8rem' }}>Estado</label>
-                  <select className="form-select" style={inputStyle} {...register('status')}>
-                    <option value="activo">Activo</option>
-                    <option value="finalizado">Finalizado</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
-                </div>
-              </div>
+                  <div className="col-12 col-md-4">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Código *
+                    </label>
+                    <input
+                      className={`form-control ${errors.codigo ? 'is-invalid' : ''}`}
+                      {...register('codigo')}
+                      placeholder="CARP-101"
+                    />
+                    {errors.codigo && <div className="invalid-feedback">{errors.codigo.message}</div>}
+                  </div>
 
-              <div className="d-flex gap-2 justify-content-end mt-4">
-                <button type="button" className="btn btn-sm text-muted" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} onClick={cerrarModal}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-sm fw-semibold" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none' }} disabled={loading}>
-                  {loading && <span className="spinner-border spinner-border-sm me-1" />}
-                  {editando ? 'Guardar Cambios' : 'Crear Curso'}
-                </button>
-              </div>
-            </form>
+                  <div className="col-12">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Docente Responsable *
+                    </label>
+                    <select
+                      className={`form-select ${errors.docenteId ? 'is-invalid' : ''}`}
+                      {...register('docenteId')}
+                    >
+                      <option value="">-- Seleccionar Docente --</option>
+                      {usuarios.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nombre} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                    {errors.docenteId && <div className="invalid-feedback">{errors.docenteId.message}</div>}
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Fecha Inicio *
+                    </label>
+                    <input
+                      type="date"
+                      className={`form-control ${errors.fechaInicio ? 'is-invalid' : ''}`}
+                      {...register('fechaInicio')}
+                    />
+                    {errors.fechaInicio && (
+                      <div className="invalid-feedback">{errors.fechaInicio.message}</div>
+                    )}
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Fecha Fin *
+                    </label>
+                    <input
+                      type="date"
+                      className={`form-control ${errors.fechaFin ? 'is-invalid' : ''}`}
+                      {...register('fechaFin')}
+                    />
+                    {errors.fechaFin && <div className="invalid-feedback">{errors.fechaFin.message}</div>}
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Días de cursada *
+                    </label>
+                    <div className="d-flex flex-wrap gap-2">
+                      {TODOS_LOS_DIAS.map((dia) => {
+                        const activo = diasSeleccionados.includes(dia);
+                        return (
+                          <button
+                            key={dia}
+                            type="button"
+                            className="btn btn-sm rounded-3"
+                            style={{
+                              background: activo ? 'var(--primary-gradient)' : 'var(--bg-input)',
+                              color: activo ? '#ffffff' : 'var(--text-muted)',
+                              border: activo ? 'none' : '1px solid var(--border-subtle)',
+                              fontSize: '0.78rem',
+                            }}
+                            onClick={() => toggleDia(dia)}
+                          >
+                            {DIAS_NOMBRES[dia]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.diasCursada && (
+                      <div className="text-danger mt-1" style={{ fontSize: '0.75rem' }}>
+                        {errors.diasCursada.message}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Estado del Curso *
+                    </label>
+                    <select
+                      className={`form-select ${errors.status ? 'is-invalid' : ''}`}
+                      {...register('status')}
+                    >
+                      <option value="activo">Activo</option>
+                      <option value="finalizado">Finalizado</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                    {errors.status && <div className="invalid-feedback">{errors.status.message}</div>}
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Descripción
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="form-control"
+                      {...register('descripcion')}
+                      placeholder="Objetivos, temario y requisitos..."
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div className="app-modal-footer">
+              <button
+                type="button"
+                className="btn btn-sm px-3 rounded-3"
+                style={{
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                }}
+                onClick={cerrarModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                form="form-curso"
+                className="btn btn-sm fw-semibold px-3 py-2 rounded-3"
+                style={{
+                  background: 'var(--primary-gradient)',
+                  color: '#ffffff',
+                  border: 'none',
+                }}
+                disabled={loading}
+              >
+                {loading && <span className="spinner-border spinner-border-sm me-1" />}
+                {editando ? 'Guardar Cambios' : 'Crear Curso'}
+              </button>
+            </div>
           </div>
         </div>
       )}

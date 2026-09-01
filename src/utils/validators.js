@@ -1,58 +1,128 @@
 /**
- * @fileoverview Schemas de validación Yup para formularios.
+ * @fileoverview Schemas de validación Yup para formularios y utilidades de seguridad.
  */
 
 import * as yup from 'yup';
 
+// Expresión regular para validación fuerte de contraseñas:
+// - Mínimo 8 caracteres
+// - Al menos 1 letra mayúscula
+// - Al menos 1 letra minúscula
+// - Al menos 1 número
+// - Al menos 1 carácter especial
+export const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
+/**
+ * Evalúa la fortaleza de una contraseña y retorna un desglose para feedback visual en tiempo real.
+ * @param {string} password
+ * @returns {{
+ *   score: number, // 0 a 4
+ *   porcentaje: number, // 0 a 100
+ *   label: 'Muy Débil' | 'Débil' | 'Media' | 'Fuerte' | 'Excelente',
+ *   color: string,
+ *   checks: {
+ *     length: boolean,
+ *     uppercase: boolean,
+ *     lowercase: boolean,
+ *     number: boolean,
+ *     special: boolean
+ *   }
+ * }}
+ */
+export const evaluarFortalezaPassword = (password = '') => {
+  const checks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+  };
+
+  const validCount = Object.values(checks).filter(Boolean).length;
+
+  if (password.length === 0) {
+    return { score: 0, porcentaje: 0, label: 'Sin ingresar', color: '#64748b', checks };
+  }
+
+  if (validCount <= 2) {
+    return { score: 1, porcentaje: 25, label: 'Débil', color: '#ef4444', checks };
+  }
+  if (validCount === 3 || validCount === 4) {
+    return { score: 2, porcentaje: 60, label: 'Media', color: '#f59e0b', checks };
+  }
+  if (validCount === 5 && password.length >= 10) {
+    return { score: 4, porcentaje: 100, label: 'Excelente', color: '#10b981', checks };
+  }
+  return { score: 3, porcentaje: 85, label: 'Fuerte', color: '#3b82f6', checks };
+};
+
 export const internoSchema = yup.object({
   apellidoPaterno: yup
     .string()
+    .trim()
     .required('El apellido paterno es requerido.')
-    .min(2, 'Mínimo 2 caracteres.'),
+    .min(2, 'Mínimo 2 caracteres.')
+    .matches(/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s'-]+$/, 'Solo se permiten letras y espacios.'),
   apellidoMaterno: yup
     .string()
+    .trim()
     .required('El apellido materno es requerido.')
-    .min(2, 'Mínimo 2 caracteres.'),
+    .min(2, 'Mínimo 2 caracteres.')
+    .matches(/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s'-]+$/, 'Solo se permiten letras y espacios.'),
   nombreCompleto: yup
     .string()
+    .trim()
     .required('El/los nombre/s son requeridos.')
-    .min(2, 'Mínimo 2 caracteres.'),
+    .min(2, 'Mínimo 2 caracteres.')
+    .matches(/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s'-]+$/, 'Solo se permiten letras y espacios.'),
   dni: yup
     .string()
+    .trim()
     .required('El DNI es requerido.')
-    .matches(/^\d{7,8}$/, 'El DNI debe tener 7 u 8 dígitos numéricos.'),
+    .matches(/^\d{7,8}$/, 'El DNI debe tener exactamente 7 u 8 dígitos numéricos.'),
   fichaCriminologica: yup
     .string()
-    .required('La ficha criminológica es requerida.'),
+    .trim()
+    .required('La ficha criminológica es requerida.')
+    .min(3, 'Mínimo 3 caracteres.'),
   pabellon: yup
     .string()
+    .trim()
     .required('El pabellón es requerido.'),
   celda: yup
     .string()
+    .trim()
     .required('La celda es requerida.'),
   fechaIngreso: yup
     .string()
     .required('La fecha de ingreso es requerida.'),
   status: yup
     .string()
-    .oneOf(['activo', 'inactivo', 'suspendido'])
-    .required(),
+    .oneOf(['activo', 'inactivo', 'suspendido'], 'Estado no válido')
+    .required('El estado es requerido.'),
   notas: yup.string().optional(),
 });
 
 export const cursoSchema = yup.object({
-  nombre: yup.string().required('El nombre es requerido.').min(3, 'Mínimo 3 caracteres.'),
-  codigo: yup.string().required('El código es requerido.'),
+  nombre: yup.string().trim().required('El nombre del curso es requerido.').min(3, 'Mínimo 3 caracteres.'),
+  codigo: yup.string().trim().required('El código de curso es requerido.').min(2, 'Mínimo 2 caracteres.'),
   descripcion: yup.string().optional(),
-  docenteId: yup.string().required('Debe asignar un docente.'),
+  docenteId: yup.string().required('Debe asignar un docente responsable.'),
   diasCursada: yup
     .array()
     .of(yup.string())
     .min(1, 'Seleccioná al menos un día de cursada.')
-    .required(),
+    .required('Días de cursada requeridos.'),
   fechaInicio: yup.string().required('La fecha de inicio es requerida.'),
-  fechaFin: yup.string().required('La fecha de fin es requerida.'),
-  status: yup.string().oneOf(['activo', 'finalizado', 'cancelado']).required(),
+  fechaFin: yup
+    .string()
+    .required('La fecha de fin es requerida.')
+    .test('fechas-validas', 'La fecha de fin debe ser posterior a la de inicio', function (value) {
+      const { fechaInicio } = this.parent;
+      if (!fechaInicio || !value) return true;
+      return value >= fechaInicio;
+    }),
+  status: yup.string().oneOf(['activo', 'finalizado', 'cancelado']).required('El estado es requerido.'),
 });
 
 export const inscripcionSchema = yup.object({
@@ -64,8 +134,9 @@ export const inscripcionSchema = yup.object({
 export const loginSchema = yup.object({
   email: yup
     .string()
-    .email('Ingresá un email válido.')
-    .required('El email es requerido.'),
+    .trim()
+    .email('Ingresá un correo electrónico válido.')
+    .required('El correo electrónico es requerido.'),
   password: yup
     .string()
     .required('La contraseña es requerida.')
@@ -73,19 +144,37 @@ export const loginSchema = yup.object({
 });
 
 export const usuarioSchema = yup.object({
-  nombre: yup.string().required('El nombre es requerido.').min(3, 'Mínimo 3 caracteres.'),
-  email: yup.string().email('Email inválido.').required('El email es requerido.'),
-  rol: yup.string().oneOf(['admin', 'user']).required('El rol es requerido.'),
-  password: yup.string().min(6, 'Mínimo 6 caracteres.').optional(),
+  nombre: yup
+    .string()
+    .trim()
+    .required('El nombre completo es requerido.')
+    .min(3, 'Mínimo 3 caracteres.')
+    .max(80, 'Máximo 80 caracteres.')
+    .matches(/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s.'-]+$/, 'Nombre solo con letras y espacios.'),
+  email: yup
+    .string()
+    .trim()
+    .email('Ingresá un correo electrónico válido.')
+    .required('El correo electrónico es requerido.'),
+  rol: yup
+    .string()
+    .oneOf(['admin', 'user'], 'Rol inválido')
+    .required('El rol en el sistema es requerido.'),
+  password: yup
+    .string()
+    .test('password-fuerte', 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo especial (!@#$%^&*...).', function (val) {
+      if (!val) return true; // Si es opcional (al editar sin cambiar)
+      return STRONG_PASSWORD_REGEX.test(val);
+    }),
 });
 
 export const evaluacionSchema = yup.object({
-  concepto: yup.string().required('El concepto es requerido.').min(10, 'Mínimo 10 caracteres.'),
+  concepto: yup.string().trim().required('El concepto pedagógico es requerido.').min(10, 'Mínimo 10 caracteres.'),
   calificacion: yup
     .number()
-    .min(1, 'Mínimo 1')
-    .max(10, 'Máximo 10')
+    .min(1, 'Calificación mínima es 1')
+    .max(10, 'Calificación máxima es 10')
     .nullable()
-    .transform((v, o) => (o === '' ? null : v)),
-  periodo: yup.string().required('El período es requerido.'),
+    .transform((v, o) => (o === '' || o === null ? null : v)),
+  periodo: yup.string().required('El período evaluativo es requerido.'),
 });

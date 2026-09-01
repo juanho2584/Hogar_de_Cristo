@@ -1,5 +1,5 @@
 /**
- * @fileoverview App.jsx — Enrutador principal de la aplicación con guards de autenticación y carga de seed data.
+ * @fileoverview App.jsx — Enrutador principal de la aplicación con guards de autenticación, carga de seed data y soporte de temas.
  */
 
 import { useEffect, useState } from 'react';
@@ -14,17 +14,19 @@ import InscripcionesPage from './pages/InscripcionesPage.jsx';
 import AsistenciaPage from './pages/AsistenciaPage.jsx';
 import ReportesPage from './pages/ReportesPage.jsx';
 import UsuariosPage from './pages/UsuariosPage.jsx';
+import HistorialPage from './pages/HistorialPage.jsx';
 
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import { cargarSeedData } from './utils/seedData.js';
 import { STORAGE_KEYS } from './services/localStorage/storageUtils.js';
+import useThemeStore from './store/themeStore.js';
 
 function App() {
   const [initLoaded, setInitLoaded] = useState(false);
+  const { theme } = useThemeStore();
 
   useEffect(() => {
     const initApp = async () => {
-      // Verificar si ya cargó seed data o si no hay datos iniciales
       const seedLoaded = localStorage.getItem(STORAGE_KEYS.SEED_LOADED);
       if (!seedLoaded) {
         await cargarSeedData();
@@ -38,7 +40,7 @@ function App() {
     return (
       <div
         className="d-flex align-items-center justify-content-center"
-        style={{ minHeight: '100vh', background: '#0d1117', color: '#6366f1' }}
+        style={{ minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--primary-accent)' }}
       >
         <div className="spinner-border" role="status">
           <span className="visually-hidden">Iniciando aplicación...</span>
@@ -49,15 +51,15 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Sistema global de notificaciones Toast */}
+      {/* Sistema global de notificaciones Toast adaptado al tema */}
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            background: '#1a1f36',
-            color: '#f8fafc',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+            background: theme === 'high-contrast' ? '#000000' : theme === 'light' ? '#ffffff' : '#151d30',
+            color: theme === 'high-contrast' ? '#ffffff' : theme === 'light' ? '#0f172a' : '#f8fafc',
+            border: theme === 'high-contrast' ? '2px solid #facc15' : '1px solid var(--border-subtle)',
+            boxShadow: 'var(--shadow-md)',
             fontSize: '0.88rem',
             borderRadius: '12px',
           },
@@ -80,7 +82,7 @@ function App() {
         {/* Ruta pública */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Rutas protegidas (Usuario y Admin) */}
+        {/* Rutas protegidas (Docente y Admin) */}
         <Route
           path="/dashboard"
           element={
@@ -128,6 +130,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <InscripcionesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/historial"
+          element={
+            <ProtectedRoute requireAdmin>
+              <HistorialPage />
             </ProtectedRoute>
           }
         />

@@ -47,4 +47,6 @@ export const STORAGE_KEYS = {
   USUARIOS: 'hdd_usuarios',
   EVALUACIONES: 'hdd_evaluaciones',
   SEED_LOADED: 'hdd_seed_loaded',
+  AUDIT_LOG: 'hdd_audit_log',
 };
+
