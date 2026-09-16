@@ -20,7 +20,7 @@ const asistenciaService = {
 
     // Evitar duplicado para mismo interno/curso/fecha
     const existe = items.find(
-      (a) => a.internoId === data.internoId && a.cursoId === data.cursoId && a.fecha === data.fecha
+      (a) => a.internoId === data.internoId && a.tallerId === data.tallerId && a.fecha === data.fecha
     );
     if (existe) {
       throw new Error('Ya existe un registro de asistencia para este interno en esa fecha.');
@@ -33,7 +33,7 @@ const asistenciaService = {
       accion: 'ASISTENCIA',
       entidad: 'Asistencia',
       detalle: `Asistencia individual guardada: Interno ID [${data.internoId}] - Estado [${data.estado.toUpperCase()}] - Fecha ${data.fecha}`,
-      metadata: { asistenciaId: newItem.id, cursoId: data.cursoId, fecha: data.fecha },
+      metadata: { asistenciaId: newItem.id, tallerId: data.tallerId, fecha: data.fecha },
     });
 
     return newItem;
@@ -42,15 +42,15 @@ const asistenciaService = {
   /**
    * Registra o actualiza múltiples asistencias de una vez (planilla diaria).
    * @param {Array} registros - Array de registros sin id
-   * @param {string} cursoId
+   * @param {string} tallerId
    * @param {string} fecha
    * @returns {Promise<Array>}
    */
-  registrarPlanilla: async (registros, cursoId, fecha) => {
+  registrarPlanilla: async (registros, tallerId, fecha) => {
     const items = getFromStorage(KEY);
 
     // Filtrar los existentes para esa fecha/curso
-    const sinEsteFecha = items.filter((a) => !(a.cursoId === cursoId && a.fecha === fecha));
+    const sinEsteFecha = items.filter((a) => !(a.tallerId === tallerId && a.fecha === fecha));
 
     const nuevos = registros.map((r) => ({ ...r, id: generateId() }));
     const updated = [...sinEsteFecha, ...nuevos];
@@ -59,8 +59,8 @@ const asistenciaService = {
     await auditService.registrar({
       accion: 'ASISTENCIA',
       entidad: 'Asistencia',
-      detalle: `Planilla de asistencia guardada: ${nuevos.length} registros para Curso ID [${cursoId}] en fecha ${fecha}`,
-      metadata: { cursoId, fecha, cantidad: nuevos.length },
+      detalle: `Planilla de asistencia guardada: ${nuevos.length} registros para Curso ID [${tallerId}] en fecha ${fecha}`,
+      metadata: { tallerId, fecha, cantidad: nuevos.length },
     });
 
     return nuevos;
@@ -90,26 +90,26 @@ const asistenciaService = {
     saveToStorage(KEY, items.filter((a) => a.id !== id));
   },
 
-  getByCursoYFecha: async (cursoId, fechaDesde, fechaHasta) => {
+  getByCursoYFecha: async (tallerId, fechaDesde, fechaHasta) => {
     const items = getFromStorage(KEY);
     return items.filter((a) => {
-      if (a.cursoId !== cursoId) return false;
+      if (a.tallerId !== tallerId) return false;
       if (fechaDesde && a.fecha < fechaDesde) return false;
       if (fechaHasta && a.fecha > fechaHasta) return false;
       return true;
     });
   },
 
-  getByInternoYCurso: async (internoId, cursoId) => {
+  getByInternoYCurso: async (internoId, tallerId) => {
     const items = getFromStorage(KEY);
     return items
-      .filter((a) => a.internoId === internoId && a.cursoId === cursoId)
+      .filter((a) => a.internoId === internoId && a.tallerId === tallerId)
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
   },
 
-  getByFechaYCurso: async (cursoId, fecha) => {
+  getByFechaYCurso: async (tallerId, fecha) => {
     const items = getFromStorage(KEY);
-    return items.filter((a) => a.cursoId === cursoId && a.fecha === fecha);
+    return items.filter((a) => a.tallerId === tallerId && a.fecha === fecha);
   },
 };
 

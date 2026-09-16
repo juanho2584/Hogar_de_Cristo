@@ -2,7 +2,7 @@
  * @fileoverview Hook usePermisos — Guardas de acceso por rol.
  */
 
-import useAuthStore from '../store/authStore.js';
+import useAuthStore from "../store/authStore.js";
 
 /**
  * @returns {{
@@ -17,18 +17,18 @@ import useAuthStore from '../store/authStore.js';
  */
 const usePermisos = () => {
   const usuario = useAuthStore((s) => s.usuario);
-  const esAdmin = usuario?.rol === 'admin';
+  const esAdmin = usuario?.rol === "admin";
 
   return {
     esAdmin,
-    puedeEditar: esAdmin,                        // Solo ADMIN edita cursos, internos
-    puedeEliminar: esAdmin,                      // Solo ADMIN elimina registros
-    puedeVerReportes: true,                       // Todos pueden ver reportes
-    puedeExportarReportes: esAdmin,              // Solo ADMIN exporta
-    puedeGestionarUsuarios: esAdmin,             // Solo ADMIN gestiona usuarios
-    puedeGestionarInscripciones: esAdmin,        // Solo ADMIN gestiona inscripciones
-    puedeTomarAsistencia: true,                  // Todos pueden tomar asistencia
-    puedeEditarAsistenciaPasada: esAdmin,        // Solo ADMIN edita asistencia pasada
+    puedeEditar: esAdmin, // Solo ADMIN edita talleres, internos
+    puedeEliminar: esAdmin, // Solo ADMIN elimina registros
+    puedeVerReportes: true, // Todos pueden ver reportes
+    puedeExportarReportes: esAdmin, // Solo ADMIN exporta
+    puedeGestionarUsuarios: esAdmin, // Solo ADMIN gestiona usuarios
+    puedeGestionarInscripciones: esAdmin, // Solo ADMIN gestiona inscripciones
+    puedeTomarAsistencia: true, // Todos pueden tomar asistencia
+    puedeEditarAsistenciaPasada: esAdmin, // Solo ADMIN edita asistencia pasada
   };
 };
 

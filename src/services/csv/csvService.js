@@ -3,7 +3,7 @@
  * Usa papaparse para parseo y generación de CSVs.
  */
 
-import Papa from 'papaparse';
+import Papa from "papaparse";
 
 /**
  * Descarga un string como archivo en el navegador.
@@ -11,12 +11,16 @@ import Papa from 'papaparse';
  * @param {string} filename - Nombre del archivo
  * @param {string} [mimeType]
  */
-export const downloadFile = (content, filename, mimeType = 'text/csv;charset=utf-8;') => {
+export const downloadFile = (
+  content,
+  filename,
+  mimeType = "text/csv;charset=utf-8;",
+) => {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
-  link.setAttribute('download', filename);
+  link.setAttribute("download", filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -49,7 +53,8 @@ export const importFromCsv = (file) => {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: false, // Mantener strings para IDs y fechas
-      complete: (results) => resolve({ data: results.data, errors: results.errors }),
+      complete: (results) =>
+        resolve({ data: results.data, errors: results.errors }),
       error: (err) => reject(err),
     });
   });
@@ -58,19 +63,49 @@ export const importFromCsv = (file) => {
 /** Configuraciones de exportación por entidad */
 export const CSV_CONFIG = {
   internos: {
-    filename: 'internos.csv',
-    fields: ['id', 'apellidoPaterno', 'apellidoMaterno', 'nombreCompleto', 'dni', 'fichaCriminologica', 'pabellon', 'celda', 'status', 'fechaIngreso', 'notas'],
+    filename: "internos.csv",
+    fields: [
+      "id",
+      "apellidoPaterno",
+      "apellidoMaterno",
+      "nombreCompleto",
+      "dni",
+      "fichaCriminologica",
+      "pabellon",
+      "celda",
+      "status",
+      "fechaIngreso",
+      "notas",
+    ],
   },
-  cursos: {
-    filename: 'cursos.csv',
-    fields: ['id', 'nombre', 'codigo', 'descripcion', 'docenteId', 'diasCursada', 'fechaInicio', 'fechaFin', 'status'],
+  talleres: {
+    filename: "talleres.csv",
+    fields: [
+      "id",
+      "nombre",
+      "codigo",
+      "descripcion",
+      "docenteId",
+      "diasCursada",
+      "fechaInicio",
+      "fechaFin",
+      "status",
+    ],
   },
   inscripciones: {
-    filename: 'inscripciones.csv',
-    fields: ['id', 'internoId', 'cursoId', 'fechaInscripcion', 'status'],
+    filename: "inscripciones.csv",
+    fields: ["id", "internoId", "tallerId", "fechaInscripcion", "status"],
   },
   asistencia: {
-    filename: 'asistencia.csv',
-    fields: ['id', 'internoId', 'cursoId', 'fecha', 'estado', 'notas', 'registradoPor'],
+    filename: "asistencia.csv",
+    fields: [
+      "id",
+      "internoId",
+      "tallerId",
+      "fecha",
+      "estado",
+      "notas",
+      "registradoPor",
+    ],
   },
 };

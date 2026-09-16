@@ -3,7 +3,12 @@
  * Registra qué usuario realiza cada cambio en el sistema para trazabilidad y seguridad.
  */
 
-import { generateId, getFromStorage, saveToStorage, STORAGE_KEYS } from './storageUtils.js';
+import {
+  generateId,
+  getFromStorage,
+  saveToStorage,
+  STORAGE_KEYS,
+} from "./storageUtils.js";
 
 const KEY = STORAGE_KEYS.AUDIT_LOG;
 const MAX_LOGS = 1000; // Mantener hasta 1000 registros históricos
@@ -14,24 +19,24 @@ const MAX_LOGS = 1000; // Mantener hasta 1000 registros históricos
  */
 const getUsuarioActual = () => {
   try {
-    const raw = sessionStorage.getItem('hdd_session');
+    const raw = sessionStorage.getItem("hdd_session");
     if (raw) {
       const u = JSON.parse(raw);
       return {
-        id: u.id || 'sistema',
-        nombre: u.nombre || 'Usuario del Sistema',
-        rol: u.rol || 'docente',
-        email: u.email || '',
+        id: u.id || "sistema",
+        nombre: u.nombre || "Usuario del Sistema",
+        rol: u.rol || "docente",
+        email: u.email || "",
       };
     }
   } catch {
     // fallback
   }
   return {
-    id: 'sistema',
-    nombre: 'Sistema / Invitado',
-    rol: 'sistema',
-    email: 'sistema@hogar.edu',
+    id: "sistema",
+    nombre: "Sistema / Invitado",
+    rol: "sistema",
+    email: "sistema@hogar.edu",
   };
 };
 
@@ -49,7 +54,7 @@ const auditService = {
    * Registra un nuevo evento de cambio o actividad.
    * @param {{
    *   accion: 'CREAR' | 'EDITAR' | 'ELIMINAR' | 'ASISTENCIA' | 'LOGIN' | 'EXPORTAR' | 'IMPORTAR' | 'EVALUACION',
-   *   entidad: 'Internos' | 'Cursos' | 'Inscripciones' | 'Asistencia' | 'Usuarios' | 'Evaluaciones' | 'Sistema',
+   *   entidad: 'Internos' | 'Talleres' | 'Inscripciones' | 'Asistencia' | 'Usuarios' | 'Evaluaciones' | 'Sistema',
    *   detalle: string,
    *   usuario?: { id: string, nombre: string, rol: string, email: string },
    *   metadata?: Object
@@ -68,9 +73,9 @@ const auditService = {
         usuarioNombre: user.nombre,
         usuarioRol: user.rol,
         usuarioEmail: user.email,
-        accion: accion || 'MODIFICACION',
-        entidad: entidad || 'General',
-        detalle: detalle || 'Acción efectuada',
+        accion: accion || "MODIFICACION",
+        entidad: entidad || "General",
+        detalle: detalle || "Acción efectuada",
         metadata,
       };
 
@@ -79,7 +84,7 @@ const auditService = {
       saveToStorage(KEY, updated);
       return newLog;
     } catch (err) {
-      console.warn('Error al registrar auditoría:', err);
+      console.warn("Error al registrar auditoría:", err);
       return null;
     }
   },
@@ -91,21 +96,30 @@ const auditService = {
   filtrar: async (filtros = {}) => {
     const logs = await auditService.getAll();
     return logs.filter((log) => {
-      if (filtros.entidad && filtros.entidad !== 'todas' && log.entidad !== filtros.entidad) {
+      if (
+        filtros.entidad &&
+        filtros.entidad !== "todas" &&
+        log.entidad !== filtros.entidad
+      ) {
         return false;
       }
-      if (filtros.accion && filtros.accion !== 'todas' && log.accion !== filtros.accion) {
+      if (
+        filtros.accion &&
+        filtros.accion !== "todas" &&
+        log.accion !== filtros.accion
+      ) {
         return false;
       }
-      if (filtros.fechaDesde && log.fecha.split('T')[0] < filtros.fechaDesde) {
+      if (filtros.fechaDesde && log.fecha.split("T")[0] < filtros.fechaDesde) {
         return false;
       }
-      if (filtros.fechaHasta && log.fecha.split('T')[0] > filtros.fechaHasta) {
+      if (filtros.fechaHasta && log.fecha.split("T")[0] > filtros.fechaHasta) {
         return false;
       }
       if (filtros.busqueda) {
         const q = filtros.busqueda.toLowerCase();
-        const texto = `${log.usuarioNombre} ${log.usuarioEmail} ${log.detalle} ${log.entidad} ${log.accion}`.toLowerCase();
+        const texto =
+          `${log.usuarioNombre} ${log.usuarioEmail} ${log.detalle} ${log.entidad} ${log.accion}`.toLowerCase();
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -118,9 +132,9 @@ const auditService = {
   limpiar: async () => {
     saveToStorage(KEY, []);
     await auditService.registrar({
-      accion: 'ELIMINAR',
-      entidad: 'Sistema',
-      detalle: 'El historial de auditoría fue vaciado por un administrador.',
+      accion: "ELIMINAR",
+      entidad: "Sistema",
+      detalle: "El historial de auditoría fue vaciado por un administrador.",
     });
   },
 };

@@ -3,12 +3,12 @@
  * Retorna un array de alertas activas para mostrar en el Dashboard.
  */
 
-import { useMemo } from 'react';
-import { generarAlertas } from '../utils/asistenciaUtils.js';
-import useAsistenciaStore from '../store/asistenciaStore.js';
-import useInscripcionesStore from '../store/inscripcionesStore.js';
-import useInternosStore from '../store/internosStore.js';
-import useCursosStore from '../store/cursosStore.js';
+import { useMemo } from "react";
+import { generarAlertas } from "../utils/asistenciaUtils.js";
+import useAsistenciaStore from "../store/asistenciaStore.js";
+import useInscripcionesStore from "../store/inscripcionesStore.js";
+import useInternosStore from "../store/internosStore.js";
+import useTalleresStore from "../store/talleresStore.js";
 
 /**
  * @returns {{ alertas: Array, totalAlertas: number }}
@@ -17,32 +17,31 @@ const useAlertaFaltas = () => {
   const asistencias = useAsistenciaStore((s) => s.asistencias);
   const inscripciones = useInscripcionesStore((s) => s.inscripciones);
   const internos = useInternosStore((s) => s.internos);
-  const cursos = useCursosStore((s) => s.cursos);
+  const talleres = useTalleresStore((s) => s.talleres);
 
   const alertas = useMemo(() => {
     const todasLasAlertas = [];
 
-    for (const curso of cursos) {
-      // Internos inscritos en este curso
-      const inscripcionesCurso = inscripciones.filter(
-        (i) => i.cursoId === curso.id && i.status === 'activo'
+    for (const taller of talleres) {
+      const inscripcionesTaller = inscripciones.filter(
+        (i) => i.tallerId === taller.id && i.status === "activo",
       );
-      const internosCurso = inscripcionesCurso
+      const internosTaller = inscripcionesTaller
         .map((ins) => internos.find((i) => i.id === ins.internoId))
         .filter(Boolean);
 
-      const alertasCurso = generarAlertas({
-        internos: internosCurso,
+      const alertasTaller = generarAlertas({
+        internos: internosTaller,
         asistencias,
-        cursoId: curso.id,
-        cursoNombre: curso.nombre,
+        tallerId: taller.id,
+        cursoNombre: taller.nombre,
       });
 
-      todasLasAlertas.push(...alertasCurso);
+      todasLasAlertas.push(...alertasTaller);
     }
 
     return todasLasAlertas;
-  }, [asistencias, inscripciones, internos, cursos]);
+  }, [asistencias, inscripciones, internos, talleres]);
 
   return { alertas, totalAlertas: alertas.length };
 };

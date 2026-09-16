@@ -26,7 +26,7 @@ const inscripcionesService = {
 
     if (inscripcionActiva) {
       throw new Error(
-        'Este interno ya tiene una inscripción activa. Debe darse de baja o completar el curso antes de inscribirse en otro.'
+        'Este interno ya tiene una inscripción activa. Debe darse de baja o completar el taller antes de inscribirse en otro.'
       );
     }
 
@@ -42,8 +42,8 @@ const inscripcionesService = {
     await auditService.registrar({
       accion: 'CREAR',
       entidad: 'Inscripciones',
-      detalle: `Inscripción registrada para interno ID [${newItem.internoId}] en curso ID [${newItem.cursoId}]`,
-      metadata: { inscripcionId: newItem.id, internoId: newItem.internoId, cursoId: newItem.cursoId },
+      detalle: `Inscripción registrada para interno ID [${newItem.internoId}] en curso ID [${newItem.tallerId}]`,
+      metadata: { inscripcionId: newItem.id, internoId: newItem.internoId, tallerId: newItem.tallerId },
     });
 
     return newItem;
@@ -88,9 +88,9 @@ const inscripcionesService = {
     return items.find((i) => i.internoId === internoId && i.status === 'activo') || null;
   },
 
-  getByCurso: async (cursoId) => {
+  getByCurso: async (tallerId) => {
     const items = getFromStorage(KEY);
-    return items.filter((i) => i.cursoId === cursoId && i.status === 'activo');
+    return items.filter((i) => i.tallerId === tallerId && i.status === 'activo');
   },
 };
 

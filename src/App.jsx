@@ -2,24 +2,24 @@
  * @fileoverview App.jsx — Enrutador principal de la aplicación con guards de autenticación, carga de seed data y soporte de temas.
  */
 
-import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
-import LoginPage from './pages/LoginPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
-import InternosPage from './pages/InternosPage.jsx';
-import CursosPage from './pages/CursosPage.jsx';
-import InscripcionesPage from './pages/InscripcionesPage.jsx';
-import AsistenciaPage from './pages/AsistenciaPage.jsx';
-import ReportesPage from './pages/ReportesPage.jsx';
-import UsuariosPage from './pages/UsuariosPage.jsx';
-import HistorialPage from './pages/HistorialPage.jsx';
+import LoginPage from "./pages/LoginPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import InternosPage from "./pages/InternosPage.jsx";
+import TalleresPage from "./pages/TalleresPage.jsx";
+import InscripcionesPage from "./pages/InscripcionesPage.jsx";
+import AsistenciaPage from "./pages/AsistenciaPage.jsx";
+import ReportesPage from "./pages/ReportesPage.jsx";
+import UsuariosPage from "./pages/UsuariosPage.jsx";
+import HistorialPage from "./pages/HistorialPage.jsx";
 
-import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
-import { cargarSeedData } from './utils/seedData.js';
-import { STORAGE_KEYS } from './services/localStorage/storageUtils.js';
-import useThemeStore from './store/themeStore.js';
+import ProtectedRoute from "./components/auth/ProtectedRoute.jsx";
+import { cargarSeedData } from "./utils/seedData.js";
+import { STORAGE_KEYS } from "./services/localStorage/storageUtils.js";
+import useThemeStore from "./store/themeStore.js";
 
 function App() {
   const [initLoaded, setInitLoaded] = useState(false);
@@ -40,7 +40,11 @@ function App() {
     return (
       <div
         className="d-flex align-items-center justify-content-center"
-        style={{ minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--primary-accent)' }}
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg-main)",
+          color: "var(--primary-accent)",
+        }}
       >
         <div className="spinner-border" role="status">
           <span className="visually-hidden">Iniciando aplicación...</span>
@@ -56,23 +60,36 @@ function App() {
         position="top-right"
         toastOptions={{
           style: {
-            background: theme === 'high-contrast' ? '#000000' : theme === 'light' ? '#ffffff' : '#151d30',
-            color: theme === 'high-contrast' ? '#ffffff' : theme === 'light' ? '#0f172a' : '#f8fafc',
-            border: theme === 'high-contrast' ? '2px solid #facc15' : '1px solid var(--border-subtle)',
-            boxShadow: 'var(--shadow-md)',
-            fontSize: '0.88rem',
-            borderRadius: '12px',
+            background:
+              theme === "high-contrast"
+                ? "#000000"
+                : theme === "light"
+                  ? "#ffffff"
+                  : "#151d30",
+            color:
+              theme === "high-contrast"
+                ? "#ffffff"
+                : theme === "light"
+                  ? "#0f172a"
+                  : "#f8fafc",
+            border:
+              theme === "high-contrast"
+                ? "2px solid #facc15"
+                : "1px solid var(--border-subtle)",
+            boxShadow: "var(--shadow-md)",
+            fontSize: "0.88rem",
+            borderRadius: "12px",
           },
           success: {
             iconTheme: {
-              primary: '#10b981',
-              secondary: '#ffffff',
+              primary: "#10b981",
+              secondary: "#ffffff",
             },
           },
           error: {
             iconTheme: {
-              primary: '#ef4444',
-              secondary: '#ffffff',
+              primary: "#ef4444",
+              secondary: "#ffffff",
             },
           },
         }}
@@ -100,10 +117,10 @@ function App() {
           }
         />
         <Route
-          path="/cursos"
+          path="/talleres"
           element={
             <ProtectedRoute>
-              <CursosPage />
+              <TalleresPage />
             </ProtectedRoute>
           }
         />

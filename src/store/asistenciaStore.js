@@ -20,10 +20,10 @@ const useAsistenciaStore = create((set, get) => ({
     }
   },
 
-  registrarPlanilla: async (registros, cursoId, fecha) => {
+  registrarPlanilla: async (registros, tallerId, fecha) => {
     set({ loading: true });
     try {
-      const nuevos = await asistenciaService.registrarPlanilla(registros, cursoId, fecha);
+      const nuevos = await asistenciaService.registrarPlanilla(registros, tallerId, fecha);
       // Recargar todas las asistencias para mantener consistencia
       const all = await asistenciaService.getAll();
       set({ asistencias: all, loading: false, error: null });
@@ -65,16 +65,16 @@ const useAsistenciaStore = create((set, get) => ({
     }
   },
 
-  getAsistenciasByCurso: (cursoId) =>
-    get().asistencias.filter((a) => a.cursoId === cursoId),
+  getAsistenciasByCurso: (tallerId) =>
+    get().asistencias.filter((a) => a.tallerId === tallerId),
 
-  getAsistenciasByInternoYCurso: (internoId, cursoId) =>
+  getAsistenciasByInternoYCurso: (internoId, tallerId) =>
     get()
-      .asistencias.filter((a) => a.internoId === internoId && a.cursoId === cursoId)
+      .asistencias.filter((a) => a.internoId === internoId && a.tallerId === tallerId)
       .sort((a, b) => a.fecha.localeCompare(b.fecha)),
 
-  getAsistenciasByFechaYCurso: (cursoId, fecha) =>
-    get().asistencias.filter((a) => a.cursoId === cursoId && a.fecha === fecha),
+  getAsistenciasByFechaYCurso: (tallerId, fecha) =>
+    get().asistencias.filter((a) => a.tallerId === tallerId && a.fecha === fecha),
 }));
 
 export default useAsistenciaStore;

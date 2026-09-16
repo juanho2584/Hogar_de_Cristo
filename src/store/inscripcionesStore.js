@@ -64,8 +64,8 @@ const useInscripcionesStore = create((set, get) => ({
     }
   },
 
-  getInscripcionesByCurso: (cursoId) =>
-    get().inscripciones.filter((i) => i.cursoId === cursoId && i.status === 'activo'),
+  getInscripcionesByCurso: (tallerId) =>
+    get().inscripciones.filter((i) => i.tallerId === tallerId && i.status === 'activo'),
 
   getInscripcionActivaByInterno: (internoId) =>
     get().inscripciones.find((i) => i.internoId === internoId && i.status === 'activo') || null,

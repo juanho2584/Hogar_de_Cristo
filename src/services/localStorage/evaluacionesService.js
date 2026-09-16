@@ -28,7 +28,7 @@ const evaluacionesService = {
       accion: 'EVALUACION',
       entidad: 'Evaluaciones',
       detalle: `Evaluación registrada para Interno ID [${newItem.internoId}] en Período ${newItem.periodo}`,
-      metadata: { evaluacionId: newItem.id, internoId: newItem.internoId, cursoId: newItem.cursoId },
+      metadata: { evaluacionId: newItem.id, internoId: newItem.internoId, tallerId: newItem.tallerId },
     });
 
     return newItem;
@@ -58,14 +58,14 @@ const evaluacionesService = {
     saveToStorage(KEY, items.filter((e) => e.id !== id));
   },
 
-  getByInternoYCurso: async (internoId, cursoId) => {
+  getByInternoYCurso: async (internoId, tallerId) => {
     const items = getFromStorage(KEY);
-    return items.filter((e) => e.internoId === internoId && e.cursoId === cursoId);
+    return items.filter((e) => e.internoId === internoId && e.tallerId === tallerId);
   },
 
-  getByCurso: async (cursoId) => {
+  getByCurso: async (tallerId) => {
     const items = getFromStorage(KEY);
-    return items.filter((e) => e.cursoId === cursoId);
+    return items.filter((e) => e.tallerId === tallerId);
   },
 };
 

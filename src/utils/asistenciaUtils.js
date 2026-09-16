@@ -5,7 +5,7 @@
 import { ACADEMIC_CONFIG } from '../config/academicConfig.js';
 
 /**
- * Calcula el porcentaje de presentismo de un interno en un curso.
+ * Calcula el porcentaje de presentismo de un interno en un taller.
  * @param {Array} registros - Array de RegistroAsistencia
  * @returns {Object} { total, presentes, ausentes, tarde, justificado, porcentaje }
  */
@@ -65,21 +65,21 @@ export const detectarFaltasConsecutivas = (registros, umbral = ACADEMIC_CONFIG.m
 };
 
 /**
- * Genera las alertas de 5 faltas para todos los internos de un curso.
+ * Genera las alertas de 5 faltas para todos los internos de un taller.
  * 
  * @param {Object} params
  * @param {Array} params.internos - Lista de internos del curso
  * @param {Array} params.asistencias - Todos los registros del curso
- * @param {string} params.cursoId
+ * @param {string} params.tallerId
  * @param {string} params.cursoNombre
  * @returns {Array} Alertas activas
  */
-export const generarAlertas = ({ internos, asistencias, cursoId, cursoNombre }) => {
+export const generarAlertas = ({ internos, asistencias, tallerId, cursoNombre }) => {
   const alertas = [];
 
   for (const interno of internos) {
     const registrosInterno = asistencias
-      .filter((a) => a.internoId === interno.id && a.cursoId === cursoId)
+      .filter((a) => a.internoId === interno.id && a.tallerId === tallerId)
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
     const { tieneAlerta, rachaActual, rachaInicio } = detectarFaltasConsecutivas(registrosInterno);
@@ -90,7 +90,7 @@ export const generarAlertas = ({ internos, asistencias, cursoId, cursoNombre }) 
         nombreInterno: `${interno.apellidoPaterno} ${interno.apellidoMaterno}, ${interno.nombreCompleto}`,
         pabellon: interno.pabellon,
         celda: interno.celda,
-        cursoId,
+        tallerId,
         cursoNombre,
         faltasConsecutivas: rachaActual,
         fechaInicioRacha: rachaInicio,
