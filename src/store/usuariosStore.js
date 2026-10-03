@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import usuariosService from '../services/localStorage/usuariosService.js';
+import usuariosService from '../services/usuariosService.js';
 
 const useUsuariosStore = create((set) => ({
   usuarios: [],

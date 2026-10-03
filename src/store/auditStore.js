@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import auditService from '../services/localStorage/auditService.js';
+import auditService from '../services/auditService.js';
 
 export const useAuditStore = create((set, get) => ({
   logs: [],

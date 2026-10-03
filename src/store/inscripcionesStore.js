@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import inscripcionesService from '../services/localStorage/inscripcionesService.js';
+import inscripcionesService from '../services/inscripcionesService.js';
 
 const useInscripcionesStore = create((set, get) => ({
   inscripciones: [],

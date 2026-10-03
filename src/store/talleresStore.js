@@ -3,7 +3,7 @@
  */
 
 import { create } from "zustand";
-import talleresService from "../services/localStorage/talleresService.js";
+import talleresService from "../services/talleresService.js";
 
 const useTalleresStore = create((set, get) => ({
   talleres: [],

@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import internosService from '../services/localStorage/internosService.js';
+import internosService from '../services/internosService.js';
 
 const useInternosStore = create((set, get) => ({
   /** @type {Array} */

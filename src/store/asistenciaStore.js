@@ -3,7 +3,7 @@
  */
 
 import { create } from 'zustand';
-import asistenciaService from '../services/localStorage/asistenciaService.js';
+import asistenciaService from '../services/asistenciaService.js';
 
 const useAsistenciaStore = create((set, get) => ({
   asistencias: [],
