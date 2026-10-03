@@ -175,9 +175,17 @@ CREATE TRIGGER trigger_set_timestamp_asistencia
 BEFORE UPDATE ON public.asistencia
 FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
 
+-- Permisos para supabase_auth_admin sobre public y perfiles_usuario
+GRANT USAGE ON SCHEMA public TO supabase_auth_admin;
+GRANT ALL ON TABLE public.perfiles_usuario TO supabase_auth_admin;
+
 -- Trigger para sincronizar auth.users -> public.perfiles_usuario
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO public.perfiles_usuario (id, email, nombre, rol)
   VALUES (
@@ -193,11 +201,11 @@ BEGIN
     rol = EXCLUDED.rol;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
-AFTER INSERT OR UPDATE ON auth.users
+AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ==============================================================================

@@ -56,6 +56,14 @@ BEGIN
   END IF;
 END $$;
 
+-- Asegurar identidades en auth.identities (requerido por Supabase GoTrue Auth)
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+VALUES
+  ('d1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', jsonb_build_object('sub', 'd1000000-0000-0000-0000-000000000001', 'email', 'admin@hogar.edu'), 'email', 'admin@hogar.edu', now(), now(), now()),
+  ('d1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000002', jsonb_build_object('sub', 'd1000000-0000-0000-0000-000000000002', 'email', 'docente@hogar.edu'), 'email', 'docente@hogar.edu', now(), now(), now()),
+  ('d1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000003', jsonb_build_object('sub', 'd1000000-0000-0000-0000-000000000003', 'email', 'preceptor@hogar.edu'), 'email', 'preceptor@hogar.edu', now(), now(), now())
+ON CONFLICT (provider, provider_id) DO NOTHING;
+
 -- Asegurar perfiles en public.perfiles_usuario
 INSERT INTO public.perfiles_usuario (id, email, nombre, rol)
 VALUES
